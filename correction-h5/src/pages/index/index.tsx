@@ -3,6 +3,7 @@ import { View, Text } from '@tarojs/components'
 import { Circle, Icon } from "@antmjs/vantui"
 
 import './index.less'
+import Taro from '@tarojs/taro'
 
 const Index = (props: any) => {
   const [ play, setPlay ] = useState(false)
@@ -20,7 +21,7 @@ const Index = (props: any) => {
 
   return (
     <View className='index'>
-      <View className='stat'>
+      <View className='stat' onClick={() => {Taro.navigateTo({url: '/pages/stat/index'})}}>
         <Icon
           className='btn-stat position-center'
           name='chart-trending-o'
@@ -40,6 +41,7 @@ const Index = (props: any) => {
             '100%': '#91eae4'
           } }
           clockwise={ false }
+          speed={ 50 }  // 若不设置 speed，ios 动画很慢
         >
           <Text className='time position-center'>
           20:00
