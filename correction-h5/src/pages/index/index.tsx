@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text } from '@tarojs/components'
-import { Circle, Icon } from "@antmjs/vantui"
+import { Circle, Icon, Grid, GridItem } from "@antmjs/vantui"
 
 import './index.less'
 import Taro from '@tarojs/taro'
@@ -21,13 +21,28 @@ const Index = (props: any) => {
 
   return (
     <View className='index'>
-      <View className='stat' onClick={() => {Taro.navigateTo({url: '/pages/stat/index'})}}>
-        <Icon
-          className='btn-stat position-center'
-          name='chart-trending-o'
-          size='20px'
-          color='#999'
-        />
+      <View className='stat'>
+        <View className='stat-item grid-split'>
+          <View>
+            <Text className='stat-num'>230</Text>
+            <Text className='stat-unit'> min</Text>
+          </View>
+          <Text className='stat-desc'>总时长</Text>
+        </View>
+        <View className='stat-item grid-split'>
+          <View>
+            <Text className='stat-num success-text'>12</Text>
+            <Text className='stat-unit'> time</Text>
+          </View>
+          <Text className='stat-desc'>成功次数</Text>
+        </View>
+        <View className='stat-item'>
+          <View>
+            <Text className='stat-num fail-text'>2</Text>
+            <Text className='stat-unit'> time</Text>
+          </View>
+          <Text className='stat-desc'>失败次数</Text>
+        </View>
       </View>
       <View className='countdown'>
         <Circle
