@@ -36,34 +36,18 @@ const IndexPage = (props: any) => {
     qos: 0,
   };
   const [client, setClient] = useState<MqttClient | null>(null);
-  const [connectStatus, setConnectStatus] = useState('');
+  const [subLock, setSubLock] = useState(false);
+
+  const [connectStatus, setConnectStatus] = useState({
+    color: '#bdc3c7', // 灰色
+    text: '未连接服务器',
+    isSub: false,
+  });
 
   const mqttConnect = (url: string, mqttOption: any) => {
-    setConnectStatus('Connecting');
+    console.log('Connecting');
     setClient(mqtt.connect(url, mqttOption));
   };
-
-  useEffect(() => {
-    if (client) {
-      console.log(client);
-      client.on('connect', () => {
-        setConnectStatus('Connected');
-        // 订阅 correction/# 主题
-        // mqttSub(subscription);
-      });
-      client.on('error', (err) => {
-        console.error('Connection error: ', err);
-        client.end();
-      });
-      client.on('reconnect', () => {
-        setConnectStatus('Reconnecting');
-      });
-      client.on('message', (topic, message) => {
-        const payload = { topic, message: message.toString() };
-        console.log('payload', payload);
-      });
-    }
-  }, [client]);
 
   const mqttSub = (subscription: any) => {
     if (client) {
@@ -71,9 +55,48 @@ const IndexPage = (props: any) => {
       client.subscribe(topic, { qos }, (error) => {
         if (error) {
           console.log('Subscribe to topics error', error);
+          setConnectStatus({
+            color: '#e74c3c',
+            text: '订阅失败', // 红色
+            isSub: false,
+          });
+          setSubLock(false);
           return;
         }
+        // 订阅成功
         console.log('success subscribe');
+        setConnectStatus({
+          color: '#2ecc71', // 绿色
+          text: '已订阅',
+          isSub: true,
+        });
+        setSubLock(false);
+      });
+    }
+  };
+
+  const mqttUnSub = (subscription: any) => {
+    if (client) {
+      const { topic } = subscription;
+      client.unsubscribe(topic, (error: any) => {
+        if (error) {
+          console.log('Unsubscribe error', error);
+          setConnectStatus({
+            color: '#e74c3c',
+            text: '取消订阅失败', // 红色
+            isSub: true,
+          });
+          setSubLock(false);
+          return;
+        }
+        // 取消订阅成功
+        console.log('success cancel subscribe');
+        setConnectStatus({
+          color: '#f39c12', // 黄色
+          text: '未订阅',
+          isSub: false,
+        });
+        setSubLock(false);
       });
     }
   };
@@ -89,9 +112,64 @@ const IndexPage = (props: any) => {
     }
   };
 
+  const handleSub = () => {
+    if (!subLock) {
+      setSubLock(true); // 防止再次点击订阅
+      if (connectStatus.isSub) {
+        mqttUnSub(subscription);
+      } else {
+        if (client) {
+          // 订阅 correction/# 主题
+          mqttSub(subscription);
+        } else {
+          mqttConnect(url, options);
+        }
+      }
+    }
+  };
+
   useEffect(() => {
+    setSubLock(true);
     mqttConnect(url, options);
   }, []);
+
+  // useEffect(() => {
+  //   console.log('subLock', subLock);
+  // }, [subLock]);
+
+  useEffect(() => {
+    if (client) {
+      console.log(client);
+      client.on('connect', () => {
+        console.log('Connected');
+        setConnectStatus({
+          color: '#f39c12', // 黄色
+          text: '已连接服务器',
+          isSub: false,
+        });
+        setSubLock(false);
+      });
+      client.on('error', (err) => {
+        console.error('Connection error: ', err);
+        client.end();
+        setClient(null);
+        setConnectStatus({
+          color: '#e74c3c', // 红色
+          text: '连接错误',
+          isSub: false,
+        });
+        setSubLock(false);
+      });
+      client.on('reconnect', () => {
+        setSubLock(true);
+        console.log('Reconnecting');
+      });
+      client.on('message', (topic, message) => {
+        const payload = { topic, message: message.toString() };
+        console.log('payload', payload);
+      });
+    }
+  }, [client]);
 
   // countdown
   const formatTime = (time: number) => {
@@ -196,13 +274,34 @@ const IndexPage = (props: any) => {
 
   return (
     <>
+      {/* 导航栏 */}
       <div>
         <PageHeader
           title={'健康专注'}
           rightIcon={faChartLine}
-          onClickRight={() => history.push('/stat')}
+          onClickRight={() => {
+            if (start) {
+              console.log("can't push stat page because of focusing");
+            } else {
+              history.push('/stat');
+            }
+          }}
         />
       </div>
+      {/* mqtt 状态 */}
+      <div className={styles.mqttContainer}>
+        <div className={styles.mqttStatus}>
+          <div
+            className={styles.dot}
+            style={{ backgroundColor: connectStatus.color }}
+          ></div>
+          <span className={styles.statusText}>{connectStatus.text}</span>
+        </div>
+        <div className={styles.mqttBtn} onClick={handleSub}>
+          {client ? (connectStatus.isSub ? '取消订阅' : '订阅') : '连接'}
+        </div>
+      </div>
+      {/* 倒计时环形进度条 */}
       <div className={styles.countdownContainer}>
         <ArcProgress
           className={styles.circleProgress}
@@ -210,6 +309,8 @@ const IndexPage = (props: any) => {
           {...progressConfig}
         />
       </div>
+      {/* 倒计时控制按钮 */}
+      {/* TODO 未订阅时无法点击 */}
       <div className={styles.controlContainer}>
         {start ? (
           <>
