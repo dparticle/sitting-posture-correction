@@ -297,9 +297,9 @@ const IndexPage = (props: any) => {
           ></div>
           <span className={styles.statusText}>{connectStatus.text}</span>
         </div>
-        <div className={styles.mqttBtn} onClick={handleSub}>
+        <button className={styles.mqttBtn} onClick={handleSub} disabled={start}>
           {client ? (connectStatus.isSub ? '取消订阅' : '订阅') : '连接'}
-        </div>
+        </button>
       </div>
       {/* 倒计时环形进度条 */}
       <div className={styles.countdownContainer}>
@@ -342,13 +342,15 @@ const IndexPage = (props: any) => {
             <IconRoundButton
               icon={faPlay}
               color={'#2ecc71'}
+              disabled={!connectStatus.isSub}
               onClick={() => setStart(!start)}
             />
             {/* 编辑按钮 */}
             <IconRoundButton
               icon={faEdit}
               color={'#34495e'}
-              onClick={() => console.log('编辑总时间')}
+              disabled={false}
+              onClick={() => console.log('ing...')}
             />
           </>
         )}

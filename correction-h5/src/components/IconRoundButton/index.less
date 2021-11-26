@@ -5,6 +5,17 @@
   border-radius: 50%;
   background: #ffffff;
   box-shadow: 7px 7px 14px #d9d9d9, -7px -7px 14px #ffffff;
+  // 消除 button 默认样式
+  outline: none;
+  border: 0;
+  // background-color: transparent;
+}
+
+.btn:disabled {
+  pointer-events: none;
+  cursor: not-allowed;
+  // box-shadow: none;
+  opacity: 0.65;
 }
 
 .icon {

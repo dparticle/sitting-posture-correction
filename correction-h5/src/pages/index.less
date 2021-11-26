@@ -19,9 +19,6 @@
   margin: 0 10px;
 }
 
-.mqttStatus {
-}
-
 .mqttBtn {
   width: 70px; // 56
   padding: 4px 0;
@@ -30,6 +27,17 @@
   border-width: 1px;
   border-style: dashed;
   border-radius: 5px;
+  // 消除 button 默认样式
+  outline: none;
+  // border: 0;
+  background-color: transparent;
+}
+
+.mqttBtn:disabled {
+  pointer-events: none;
+  cursor: not-allowed;
+  // box-shadow: none;
+  opacity: 0.65;
 }
 
 .countdownContainer {

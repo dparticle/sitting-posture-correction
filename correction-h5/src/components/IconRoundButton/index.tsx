@@ -7,18 +7,19 @@ import styles from './index.less';
 interface IconRoundButtonProp {
   icon: IconProp;
   color: string;
+  disabled?: boolean;
   onClick: () => void;
 }
 
 const IconRoundButton = (props: IconRoundButtonProp) => {
   return (
-    <div className={styles.btn} onClick={props.onClick}>
+    <button className={styles.btn} onClick={props.onClick} disabled={props.disabled || false}>
       <FontAwesomeIcon
         className={styles.icon}
         icon={props.icon}
         style={{ color: props.color, fontSize: '24px' }}
       />
-    </div>
+    </button>
   );
 };
 
