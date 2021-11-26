@@ -112,6 +112,13 @@ const IndexPage = (props: any) => {
     }
   };
 
+  const mqttDisconnect = () => {
+    if (client) {
+      client.end();
+      setClient(null);
+    }
+  };
+
   const handleSub = () => {
     if (!subLock) {
       setSubLock(true); // 防止再次点击订阅
@@ -147,6 +154,7 @@ const IndexPage = (props: any) => {
           text: '已连接服务器',
           isSub: false,
         });
+        mqttSub(subscription); // 自动订阅
         setSubLock(false);
       });
       client.on('error', (err) => {
@@ -283,6 +291,8 @@ const IndexPage = (props: any) => {
             if (start) {
               console.log("can't push stat page because of focusing");
             } else {
+              // 解决重复连接问题
+              mqttDisconnect(); //FIXME failed: Close received after close
               history.push('/stat');
             }
           }}
