@@ -21,6 +21,9 @@
   },
   "dependencies": {
     "@ant-design/pro-layout": "^6.5.0",
+    "@fortawesome/fontawesome-svg-core": "^1.2.36",
+    "@fortawesome/free-solid-svg-icons": "^5.15.4",
+    "@fortawesome/react-fontawesome": "^0.1.16",
     "mqtt": "^4.2.8",
     "react": "17.x",
     "react-arc-progress": "^1.0.2",
