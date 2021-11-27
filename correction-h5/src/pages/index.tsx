@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { history } from 'umi';
 import mqtt, { MqttClient } from 'mqtt';
 import ArcProgress from 'react-arc-progress';
@@ -9,6 +9,8 @@ import {
   faPause,
   faStop,
   faEdit,
+  faTimes,
+  faCheck,
   faChartLine,
 } from '@fortawesome/free-solid-svg-icons';
 import IconRoundButton from '@/components/IconRoundButton';
@@ -18,8 +20,8 @@ import PageHeader from '@/components/PageHeader';
 let interval: NodeJS.Timer;
 // interval 关闭值仍为上一个计数器，不能直接判空，记录计时器是否关闭
 let isClose = false;
-const all = 5 * 60 * 1000;
-let now = all;
+let total = 5 * 60 * 1000;
+let now = total;
 let cnt = 0; // 累计到 1000 时再更新 now
 
 const IndexPage = (props: any) => {
@@ -37,13 +39,40 @@ const IndexPage = (props: any) => {
   };
   const [client, setClient] = useState<MqttClient | null>(null);
   const [subLock, setSubLock] = useState(false);
-
   const [connectStatus, setConnectStatus] = useState({
     color: '#bdc3c7', // 灰色
     text: '未连接服务器',
     isSub: false,
   });
+  // countdown
+  const formatTime = (time: number) => {
+    const m = Math.floor(time / 1000 / 60);
+    const s = Math.floor((time / 1000) % 60);
+    return {
+      min: m < 10 ? '0' + m : m.toString(),
+      remain: ':' + (s < 10 ? '0' + s : s),
+    };
+  };
+  const progressConfig = {
+    size: 250,
+    emptyColor: '#ebf4f8',
+    fillColor: { gradient: ['#91eae4', '#86a8e7', '#7f7fd5'] },
+    arcStart: -90,
+    arcEnd: 270,
+    thickness: 18,
+  };
+  const [progressInfo, setProgressInfo] = useState({
+    process: now / total,
+    text: formatTime(now),
+  });
+  const [start, setStart] = useState(false);
+  const [pause, setPause] = useState(false);
+  const [edit, setEdit] = useState(false);
+  const [inputMin, setInputMin] = useState(progressInfo.text.min);
+  const [inputWidth, setInputWidth] = useState(56);
+  const minRef = useRef<any>(); // 获取分钟的宽度，以确定编辑框，current 后即拿到 dom 元素
 
+  // mqtt functions
   const mqttConnect = (url: string, mqttOption: any) => {
     console.log('Connecting');
     setClient(mqtt.connect(url, mqttOption));
@@ -135,11 +164,51 @@ const IndexPage = (props: any) => {
     }
   };
 
+  // countdown functions
+  // 重置计时器所需的所有参数
+  const resetParam = () => {
+    now = total;
+    cnt = 0;
+    isClose = false;
+    setPause(false); // 重置暂停
+    setProgressInfo({ process: now / total, text: formatTime(now) });
+  };
+
+  const handleCountdown = () => {
+    if (now <= 0) {
+      clearInterval(interval);
+      // set 是异步
+      setStart(false);
+      // while (interval); // 确保 interval 关闭
+      return;
+    }
+    cnt += 10;
+    if (cnt === 1000) {
+      now -= 1000;
+      cnt = 0;
+    }
+    setProgressInfo({ process: (now - cnt) / total, text: formatTime(now) });
+  };
+
+  const handleChange = (event: any) => {
+    setInputMin(event.target.value);
+  };
+
+  // 更改专注总时间
+  const editTotal = () => {
+    total = parseInt(inputMin) * 60 * 1000;
+    now = total;
+    setProgressInfo({ process: (now - cnt) / total, text: formatTime(now) });
+    setEdit(!edit);
+  };
+
+  // first useEffect
   useEffect(() => {
     setSubLock(true);
     mqttConnect(url, options);
   }, []);
 
+  // mqtt useEffect
   // useEffect(() => {
   //   console.log('subLock', subLock);
   // }, [subLock]);
@@ -179,65 +248,7 @@ const IndexPage = (props: any) => {
     }
   }, [client]);
 
-  // countdown
-  const formatTime = (time: number) => {
-    const m = Math.floor(time / 1000 / 60);
-    const s = Math.floor((time / 1000) % 60);
-    return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
-  };
-  const [progressInfo, setProgressInfo] = useState({
-    process: now / all,
-    text: formatTime(now),
-  });
-  const [start, setStart] = useState(false);
-  const [pause, setPause] = useState(false);
-
-  const customText = [
-    {
-      text: progressInfo.text,
-      size: '42px',
-      color: '#76a4ef',
-      font: 'Arial Black',
-      x: 125,
-      y: 125,
-    },
-  ];
-
-  const progressConfig = {
-    size: 250,
-    customText,
-    emptyColor: '#ebf4f8',
-    fillColor: { gradient: ['#91eae4', '#86a8e7', '#7f7fd5'] },
-    arcStart: -90,
-    arcEnd: 270,
-    thickness: 18,
-  };
-
-  // 重置计时器所需的所有参数
-  const resetParam = () => {
-    now = all;
-    cnt = 0;
-    isClose = false;
-    setPause(false); // 重置暂停
-    setProgressInfo({ process: now / all, text: formatTime(now) });
-  };
-
-  const handleCountdown = () => {
-    if (now <= 0) {
-      clearInterval(interval);
-      // set 是异步
-      setStart(false);
-      // while (interval); // 确保 interval 关闭
-      return;
-    }
-    cnt += 10;
-    if (cnt === 1000) {
-      now -= 1000;
-      cnt = 0;
-    }
-    setProgressInfo({ process: (now - cnt) / all, text: formatTime(now) });
-  };
-
+  // countdown useEffect
   // 暂停，重新设置计时器
   useEffect(() => {
     if (pause) {
@@ -317,12 +328,34 @@ const IndexPage = (props: any) => {
           className={styles.circleProgress}
           progress={progressInfo.process}
           {...progressConfig}
-        />
+        >
+          <div className={styles.countdownContent}>
+            {edit ? (
+              <>
+                <input
+                  className={styles.editInput}
+                  value={inputMin}
+                  onChange={handleChange}
+                  style={{ width: inputWidth }}
+                ></input>
+                <span className={styles.editText}>:00</span>
+              </>
+            ) : (
+              <>
+                <span className={styles.contentMin} ref={minRef}>
+                  {progressInfo.text.min}
+                </span>
+                <span>{progressInfo.text.remain}</span>
+              </>
+            )}
+          </div>
+        </ArcProgress>
       </div>
       {/* 倒计时控制按钮 */}
       {/* TODO 未订阅时无法点击 */}
       <div className={styles.controlContainer}>
         {start ? (
+          // 专注按钮组
           <>
             {pause ? (
               // 取消暂停按钮
@@ -346,7 +379,26 @@ const IndexPage = (props: any) => {
               onClick={() => setStart(!start)}
             />
           </>
+        ) : edit ? (
+          // 编辑按钮组
+          <>
+            {/* 取消编辑按钮 */}
+            <IconRoundButton
+              icon={faTimes}
+              color={'#e74c3c'}
+              onClick={() => setEdit(!edit)}
+              iconSize={30}
+            />
+            {/* 确定编辑按钮 */}
+            <IconRoundButton
+              icon={faCheck}
+              color={'#2ecc71'}
+              iconSize={28}
+              onClick={() => editTotal()}
+            />
+          </>
         ) : (
+          // 第一状态按钮组
           <>
             {/* 开始专注按钮 */}
             <IconRoundButton
@@ -355,12 +407,14 @@ const IndexPage = (props: any) => {
               disabled={!connectStatus.isSub}
               onClick={() => setStart(!start)}
             />
-            {/* 编辑按钮 */}
+            {/* 进入编辑按钮 */}
             <IconRoundButton
               icon={faEdit}
               color={'#34495e'}
-              disabled={false}
-              onClick={() => console.log('ing...')}
+                  onClick={() => {
+                    setInputWidth(minRef.current.offsetWidth);
+                    setEdit(!edit);
+                  }}
             />
           </>
         )}

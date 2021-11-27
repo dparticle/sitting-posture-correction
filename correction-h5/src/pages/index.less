@@ -47,6 +47,32 @@
   margin-bottom: 48px;
 }
 
+.circleProgress {
+  position: relative;
+}
+
+.countdownContent {
+  white-space: nowrap; // 防止编辑时 input 与 span 换行
+
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 42px;
+  color: #76a4ef;
+  font-family: 'Arial Black';
+}
+
+.editInput {
+  // 消除默认输入框样式
+  outline: none;
+  border: 0;
+  padding: 0;
+  border-radius: 5px;
+  background: #ffffff;
+  box-shadow: inset 6px 6px 11px #d9d9d9, inset -6px -6px 11px #ffffff;
+}
+
 .controlContainer {
   display: flex;
   justify-content: space-around;

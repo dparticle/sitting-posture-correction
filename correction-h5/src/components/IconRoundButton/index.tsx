@@ -8,6 +8,7 @@ interface IconRoundButtonProp {
   icon: IconProp;
   color: string;
   disabled?: boolean;
+  iconSize?: number;
   onClick: () => void;
 }
 
@@ -17,7 +18,7 @@ const IconRoundButton = (props: IconRoundButtonProp) => {
       <FontAwesomeIcon
         className={styles.icon}
         icon={props.icon}
-        style={{ color: props.color, fontSize: '24px' }}
+        style={{ color: props.color, fontSize: `${props.iconSize || 24}px` }}
       />
     </button>
   );
