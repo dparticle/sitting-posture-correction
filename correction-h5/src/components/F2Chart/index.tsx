@@ -10,6 +10,12 @@ interface IProps {
   style?: React.CSSProperties | undefined;
 }
 
+const genID = (length: number) => {
+  return Number(
+    Math.random().toString().substr(3, length) + Date.now(),
+  ).toString(36);
+};
+
 const F2Chart: React.FC<IProps> = (props) => {
   const {
     style,
@@ -21,10 +27,11 @@ const F2Chart: React.FC<IProps> = (props) => {
   } = props;
 
   const chartRef = React.useRef<any>();
+  const [chartId, _] = useState('F2Chart' + genID(4)); // 生成随机 id，一个页面下存在多个图表
 
   React.useEffect(() => {
     const config = {
-      id: 'F2Chart',
+      id: chartId,
       width: width,
       height: height,
       pixelRatio: window.devicePixelRatio,
@@ -56,7 +63,7 @@ const F2Chart: React.FC<IProps> = (props) => {
     }
   }, [score]);
 
-  return <canvas id="F2Chart" style={style} />;
+  return <canvas id={chartId} style={style} />;
 };
 
 export default F2Chart;

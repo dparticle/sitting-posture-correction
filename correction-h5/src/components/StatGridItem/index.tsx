@@ -16,7 +16,7 @@ const StatGridItem = (props: StatGridItemProp) => {
       <div>
         <span
           className={styles.num}
-          style={{ color: props.numColor || '#34495e' }}
+          style={{ color: props.numColor || '#2c3e50' }}
         >
           {props.num}
         </span>
