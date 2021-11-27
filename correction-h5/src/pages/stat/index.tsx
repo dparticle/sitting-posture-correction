@@ -162,36 +162,8 @@ const StatPage = (props: any) => {
     // 显示 legend
     chart.legend('type', {
       // position: 'bottom',
-      align: 'center',
-      itemWidth: 80,
-    });
-    chart.tooltip({
-      custom: true, // 自定义 tooltip 内容框
-      onChange: (obj) => {
-        const legend = chart.get('legendController').legends.top?.at(0); // 获取 legend
-        // console.log('legend', legend);
-
-        const tooltipItems = obj.items;
-        const legendItems = legend?.items;
-        // console.log('legendItems', legendItems);
-
-        const map: any = {};
-        legendItems?.map((item) => {
-          map[item.name] = F2.Util.mix({}, item);
-        });
-        tooltipItems.map((item) => {
-          const { name, value } = item;
-          if (name && map[name]) {
-            map[name].value = value;
-          }
-        });
-        legend?.setItems(Object.values(map));
-      },
-      onHide: () => {
-        const legend = chart.get('legendController').legends.top?.at(0);
-        // legend.setItems(chart.getLegendItems().country); // wrong, getLegendItems() undefined
-        legend?.setItems(legend?.items);
-      },
+      align: 'right',
+      itemWidth: 50,
     });
     chart.axis('date', {
       label: function label(text, index, total) {
@@ -216,6 +188,12 @@ const StatPage = (props: any) => {
     chart
       .point()
       .position('date*num')
+      .color('type', (type: string) => {
+        if (type === '成功') {
+          return '#2ecc71';
+        }
+        return '#e74c3c';
+      })
       .style('type', {
         lineWidth: 1,
         fill: '#fff',
