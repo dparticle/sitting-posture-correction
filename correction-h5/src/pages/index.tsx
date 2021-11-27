@@ -20,7 +20,7 @@ import PageHeader from '@/components/PageHeader';
 let interval: NodeJS.Timer;
 // interval 关闭值仍为上一个计数器，不能直接判空，记录计时器是否关闭
 let isClose = false;
-let total = 5 * 60 * 1000;
+let total = parseInt(localStorage.getItem('min') || '5') * 60 * 1000;
 let now = total;
 let cnt = 0; // 累计到 1000 时再更新 now
 
@@ -29,6 +29,7 @@ const IndexPage = (props: any) => {
   const url = 'ws://***:**/mqtt';
   const options = {
     // 认证信息
+    // TODO 多个相同 client id 连接导致不断重连
     clientId: 'correction-h5',
     username: '***',
     password: '***',
@@ -198,6 +199,7 @@ const IndexPage = (props: any) => {
   const editTotal = () => {
     total = parseInt(inputMin) * 60 * 1000;
     now = total;
+    localStorage.setItem('min', inputMin);
     setProgressInfo({ process: (now - cnt) / total, text: formatTime(now) });
     setEdit(!edit);
   };
@@ -382,19 +384,19 @@ const IndexPage = (props: any) => {
         ) : edit ? (
           // 编辑按钮组
           <>
-            {/* 取消编辑按钮 */}
-            <IconRoundButton
-              icon={faTimes}
-              color={'#e74c3c'}
-              onClick={() => setEdit(!edit)}
-              iconSize={30}
-            />
             {/* 确定编辑按钮 */}
             <IconRoundButton
               icon={faCheck}
               color={'#2ecc71'}
               iconSize={28}
               onClick={() => editTotal()}
+            />
+            {/* 取消编辑按钮 */}
+            <IconRoundButton
+              icon={faTimes}
+              color={'#e74c3c'}
+              onClick={() => setEdit(!edit)}
+              iconSize={30}
             />
           </>
         ) : (
@@ -411,10 +413,10 @@ const IndexPage = (props: any) => {
             <IconRoundButton
               icon={faEdit}
               color={'#34495e'}
-                  onClick={() => {
-                    setInputWidth(minRef.current.offsetWidth);
-                    setEdit(!edit);
-                  }}
+              onClick={() => {
+                setInputWidth(minRef.current.offsetWidth);
+                setEdit(!edit);
+              }}
             />
           </>
         )}
