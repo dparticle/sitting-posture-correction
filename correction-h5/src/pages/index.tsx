@@ -287,7 +287,9 @@ const IndexPage = (props: any) => {
     return () => {
       if (interval) clearInterval(interval); // 如果中途停止，则关闭计时器
       // 重置
-      resetParam();
+      setTimeout(() => {
+        resetParam();
+      }, 50);
       console.log('interval', interval);
       console.log('stop success');
     };
