@@ -1,0 +1,13 @@
+system:
+  env: 'dev'  # Change to "develop" to skip authentication for development mode
+  addr: 8888
+
+mysql:
+  path: '***'
+  port: '3306'
+  config: 'charset=utf8mb4&parseTime=True&loc=Local'
+  db-name: 'correction'
+  username: '***'
+  password: '***'
+  max-idle-conns: 10
+  max-open-conns: 100
