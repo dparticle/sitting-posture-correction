@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { history } from 'umi';
 
 import styles from './index.less';
@@ -7,110 +7,22 @@ import PageHeader from '@/components/PageHeader';
 import F2 from '@antv/f2';
 import F2Chart from '@/components/F2Chart';
 import StatGridItem from '@/components/StatGridItem';
+import request from 'umi-request';
 
 const StatPage = (props: any) => {
-  const dataMin = [
-    {
-      date: '11-22',
-      min: 220,
-    },
-    {
-      date: '11-23',
-      min: 110,
-    },
-    {
-      date: '11-24',
-      min: 240,
-    },
-    {
-      date: '11-25',
-      min: 200,
-    },
-    {
-      date: '11-26',
-      min: 180,
-    },
-    {
-      date: '11-27',
-      min: 160,
-    },
-    {
-      date: '11-28',
-      min: 80,
-    },
-  ];
-  const dataNum = [
-    {
-      date: '11-22',
-      num: 12,
-      type: '成功',
-    },
-    {
-      date: '11-22',
-      num: 2,
-      type: '失败',
-    },
-    {
-      date: '11-23',
-      num: 10,
-      type: '成功',
-    },
-    {
-      date: '11-23',
-      num: 1,
-      type: '失败',
-    },
-    {
-      date: '11-24',
-      num: 9,
-      type: '成功',
-    },
-    {
-      date: '11-24',
-      num: 2,
-      type: '失败',
-    },
-    {
-      date: '11-25',
-      num: 5,
-      type: '成功',
-    },
-    {
-      date: '11-25',
-      num: 0,
-      type: '失败',
-    },
-    {
-      date: '11-26',
-      num: 9,
-      type: '成功',
-    },
-    {
-      date: '11-26',
-      num: 0,
-      type: '失败',
-    },
-    {
-      date: '11-27',
-      num: 13,
-      type: '成功',
-    },
-    {
-      date: '11-27',
-      num: 2,
-      type: '失败',
-    },
-    {
-      date: '11-28',
-      num: 11,
-      type: '成功',
-    },
-    {
-      date: '11-28',
-      num: 0,
-      type: '失败',
-    },
-  ];
+  const url = 'http://127.0.0.1:8888';
+  const [dataToday, setDataToday] = useState<
+    { time: number; okNum: number; failNum: number } | undefined
+  >(undefined);
+  const [dataTotal, setDataTotal] = useState<
+    { time: number; okNum: number; failNum: number } | undefined
+  >(undefined);
+  const [dataMin, setDataMin] = useState<
+    { date: string; min: number }[] | undefined
+  >(undefined);
+  const [dataNum, setDataNum] = useState<
+    { date: string; num: number; type: string }[] | undefined
+  >(undefined);
 
   const onInitMin = (chart: F2.Chart) => {
     chart.tooltip({
@@ -207,7 +119,44 @@ const StatPage = (props: any) => {
     chart.render();
   };
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    request
+      .post(url + '/stat/get_today')
+      .then((res: any) => {
+        // console.log('dataToday', res);
+        setDataToday(res);
+      })
+      .catch((err: any) => {
+        console.error('get dataToday error', err);
+      });
+    request
+      .post(url + '/stat/get_total')
+      .then((res: any) => {
+        // console.log('dataTotal', res);
+        setDataTotal(res);
+      })
+      .catch((err: any) => {
+        console.error('get dataTotal error', err);
+      });
+    request
+      .post(url + '/stat/get_seven_time')
+      .then((res: any) => {
+        // console.log('dataMin', res);
+        setDataMin(res);
+      })
+      .catch((err: any) => {
+        console.error('get dataMin error', err);
+      });
+    request
+      .post(url + '/stat/get_seven_num')
+      .then((res: any) => {
+        // console.log('dataNum', res);
+        setDataNum(res);
+      })
+      .catch((err: any) => {
+        console.error('get dataNum error', err);
+      });
+  }, []);
 
   return (
     <>
@@ -219,52 +168,69 @@ const StatPage = (props: any) => {
         onClickRight={() => console.log('resync')}
       />
       <div className={styles.statGrid}>
-        <StatGridItem num={230} unit={'min'} title={'总时长'} desc={'今日'} />
-        <StatGridItem
-          num={12}
-          numColor={'#2ecc71'}
-          unit={'time'}
-          title={'成功次数'}
-          desc={'今日'}
-        />
-        <StatGridItem
-          num={2}
-          numColor={'#e74c3c'}
-          unit={'time'}
-          title={'失败次数'}
-          desc={'今日'}
-        />
-        <StatGridItem num={230} unit={'min'} title={'总时长'} />
-        <StatGridItem
-          num={12}
-          numColor={'#2ecc71'}
-          unit={'time'}
-          title={'成功次数'}
-        />
-        <StatGridItem
-          num={2}
-          numColor={'#e74c3c'}
-          unit={'time'}
-          title={'失败次数'}
-        />
+        {dataToday && (
+          <>
+            <StatGridItem
+              num={dataToday.time}
+              unit={'min'}
+              title={'总时长'}
+              desc={'今日'}
+            />
+            <StatGridItem
+              num={dataToday.okNum}
+              numColor={'#2ecc71'}
+              unit={'time'}
+              title={'成功次数'}
+              desc={'今日'}
+            />
+            <StatGridItem
+              num={dataToday.failNum}
+              numColor={'#e74c3c'}
+              unit={'time'}
+              title={'失败次数'}
+              desc={'今日'}
+            />
+          </>
+        )}
+        {dataTotal && (
+          <>
+            <StatGridItem num={dataTotal.time} unit={'hour'} title={'总时长'} />
+            <StatGridItem
+              num={dataTotal.okNum}
+              numColor={'#2ecc71'}
+              unit={'time'}
+              title={'成功次数'}
+            />
+            <StatGridItem
+              num={dataTotal.failNum}
+              numColor={'#e74c3c'}
+              unit={'time'}
+              title={'失败次数'}
+            />
+          </>
+        )}
       </div>
       <div className={styles.chart}>
         <div className={styles.chartTitle}>近 7 日总时长</div>
-        <F2Chart
-          onInit={onInitMin}
-          width={window.innerWidth - 34}
-          height={250}
-          data={dataMin}
-        />
+        {dataMin && (
+          <F2Chart
+            onInit={onInitMin}
+            width={window.innerWidth - 34}
+            height={250}
+            data={dataMin}
+          />
+        )}
       </div>
       <div className={styles.chart}>
         <div className={styles.chartTitle}>近 7 日成功 / 失败次数</div>
-        <F2Chart
-          onInit={onInitNum}
-          width={window.innerWidth - 34}
-          height={250}
-          data={dataNum}
-        />
+        {dataNum && (
+          <F2Chart
+            onInit={onInitNum}
+            width={window.innerWidth - 34}
+            height={250}
+            data={dataNum}
+          />
+        )}
       </div>
     </>
   );

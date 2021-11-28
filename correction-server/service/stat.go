@@ -4,28 +4,34 @@ import (
 	"correction-server/global"
 	"correction-server/model/response"
 	"correction-server/utils"
+	"fmt"
 )
 
 type StatService struct {
 }
 
 func (s *StatService) GetTotal() (interface{}, error) {
-	var result response.GridStat
-	if err := global.SPC_DB.Raw("SELECT SUM(duration) time, COUNT(CASE WHEN success = 1 THEN 1 END) ok_num, COUNT(CASE WHEN success = 0 THEN 1 END) fail_num " +
-		" FROM record").Scan(&result).Error; err != nil {
+	var time uint
+	var result response.TotalStat
+	row := global.SPC_DB.Raw("SELECT SUM(duration) time, COUNT(CASE WHEN success = 1 THEN 1 END) ok_num, COUNT(CASE WHEN success = 0 THEN 1 END) fail_num " +
+		" FROM record").Row()
+	if err := row.Err() ; err != nil {
 		return nil, err
 	}
+	row.Scan(&time, &result.OkNum, &result.FailNum)
+	fmt.Println("time", time)
+	result.Time = utils.ToHour(time)
 	return &result, nil
-
 }
 
 func (s *StatService) GetToday() (interface{}, error) {
-	var result response.GridStat
+	var result response.TodayStat
 	if err := global.SPC_DB.Raw("SELECT SUM(duration) time, COUNT(CASE WHEN success = 1 THEN 1 END) ok_num, COUNT(CASE WHEN success = 0 THEN 1 END) fail_num " +
 		" FROM record " +
 		" WHERE TO_DAYS(create_time) = TO_DAYS(NOW())").Scan(&result).Error; err != nil {
 		return nil, err
 	}
+	result.Time = utils.ToMin(result.Time)
 	return &result, nil
 }
 
@@ -51,13 +57,13 @@ func (s *StatService) GetSevenTime() (interface{}, error) {
 			if days == d {
 				items = append(items, &response.SevenTimeStat{
 					Date: days,
-					Time: totalDuration,
+					Min: utils.ToMin(totalDuration),
 				})
 				break
 			} else {
 				items = append(items, &response.SevenTimeStat{
 					Date: d,
-					Time: 0,
+					Min: 0,
 				})
 			}
 		}

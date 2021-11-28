@@ -1,14 +1,20 @@
 package response
 
-type GridStat struct {
+type TodayStat struct {
 	Time    uint `json:"time"`
 	OkNum   uint `json:"okNum"`
 	FailNum uint `json:"failNum"`
 }
 
+type TotalStat struct {
+	Time    float64 `json:"time"`
+	OkNum   uint    `json:"okNum"`
+	FailNum uint    `json:"failNum"`
+}
+
 type SevenTimeStat struct {
 	Date string `json:"date"`
-	Time uint   `json:"time"`
+	Min  uint   `json:"min"`
 }
 
 type SevenNumStat struct {

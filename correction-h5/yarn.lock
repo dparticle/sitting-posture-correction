@@ -8110,7 +8110,7 @@ ua-parser-js@^0.7.30:
   resolved "https://registry.npmmirror.com/ua-parser-js/download/ua-parser-js-0.7.31.tgz#649a656b191dffab4f21d5e053e27ca17cbff5c6"
   integrity sha1-ZJplaxkd/6tPIdXgU+J8oXy/9cY=
 
-umi-request@^1.2.14:
+umi-request@^1.2.14, umi-request@^1.4.0:
   version "1.4.0"
   resolved "https://registry.npmmirror.com/umi-request/download/umi-request-1.4.0.tgz#ed0e54e47f043d2be06e691477f0890383f9dd8a"
   integrity sha1-7Q5U5H8EPSvgbmkUd/CJA4P53Yo=
