@@ -196,23 +196,21 @@ const IndexPage = (props: any) => {
 
   const pubRecord = (time: number, remark?: string) => {
     console.log('pubRecord remark:', remark);
-    // console.log({
-    //   ...pubRecordContext,
-    //   payload: JSON.stringify({
-    //     duration: time,
-    //     success: remark ? 0 : 1,
-    //     remark: remark,
-    //   }),
-    // });
-    mqttPublish({
-      ...pubRecordContext,
-      payload: JSON.stringify({
-        duration: time,
-        success: remark ? 0 : 1,
-        remark: remark,
-      }),
-    });
-    console.log('success pub record');
+    // 小于 10 秒不记录
+    const min = 10 * 1000;
+    if (time > min) {
+      mqttPublish({
+        ...pubRecordContext,
+        payload: JSON.stringify({
+          duration: time,
+          success: remark ? 0 : 1,
+          remark: remark,
+        }),
+      });
+      console.log('success pub record');
+    } else {
+      console.log('time too short');
+    }
   };
 
   const handleSub = () => {
@@ -425,7 +423,7 @@ const IndexPage = (props: any) => {
     } else {
       // 如果是结束后的重置暂停，不需要设置定时器，重置参数 isClose 即可
       if (isClose) {
-        mqttPublish({ ...pubSimpleContext, payload: 'start' });
+        mqttPublish({ ...pubSimpleContext, payload: 'pause' });
         interval = setInterval(() => {
           handleCountdown();
         }, 10);
@@ -598,6 +596,7 @@ const IndexPage = (props: any) => {
                   textColor: '#3498db',
                 });
                 timeout = setTimeout(() => {
+                  mqttPublish({ ...pubSimpleContext, payload: 'timeout' });
                   setPreStart({
                     start: true,
                     text: 'Wrong!',
