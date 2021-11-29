@@ -11,7 +11,8 @@
 const char* ssid = "***";
 const char* password = "***";
 const char* mqtt_server = "***";
-const char* topic_pub = "***";
+const char* topic_pub = "correction/esp8266";
+const char* topic_sub = "correction/h5";
 
 WiFiClient esp_client;
 PubSubClient client(esp_client);
@@ -19,7 +20,7 @@ StaticJsonDocument<200> doc;
 String client_id;
 float cm;
 unsigned long now, keep;  // 用于状态更改时间判断、记录正常坐姿维持开始时间
-bool flag = false;
+bool flag = false, start = false;
 
 // 连接 Wi-Fi
 void setup_wifi() {
@@ -45,15 +46,54 @@ void setup_wifi() {
   Serial.println(WiFi.localIP());
 }
 
+void pub_status(char* status) {
+  String output;
+
+  doc.clear();
+  doc["status"] = status;
+  serializeJson(doc, output);
+
+  serializeJsonPretty(doc, Serial);
+
+  client.publish(topic_pub, output.c_str());
+}
+
+void pub_fail(char* remark) {
+  String output;
+
+  doc.clear();
+  doc["status"] = "fail";
+  doc["remark"] = remark;
+  serializeJson(doc, output);
+
+  serializeJsonPretty(doc, Serial);
+
+  client.publish(topic_pub, output.c_str());
+}
+
 // mqtt 订阅回调函数
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
+  String p = "";
   for (int i = 0; i < length; i++) {
+    p += (char)payload[i];
     Serial.print((char)payload[i]);
   }
   Serial.println();
+  if (p == "connect") {
+      pub_status("connected");
+  } else if (p == "start") {
+    start = true;
+    flag = false; // 初始化 flag
+  } else if (p == "pause") {
+    start = true;
+  } else if (p == "stop") {
+    start = false;
+  } else if (p == "timeout") {
+    if (!flag) flag = true;
+  }
 }
 
 // 连接 mqtt
@@ -68,9 +108,10 @@ void reconnect() {
     if (client.connect(client_id.c_str(), "***", "***")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-    //   client.publish("outCL", "hello world");
+      //   client.publish("outCL", "hello world");
       // ... and resubscribe
-    //   client.subscribe("inCL");
+      // 订阅
+      client.subscribe(topic_sub);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -79,30 +120,6 @@ void reconnect() {
       delay(5000);
     }
   }
-}
-
-void send_keep_record(unsigned long duration, bool ok, char* remark) {
-  //TODO 发送数据后端记录本次坐姿维持时间
-  String output;
-
-  doc.clear();
-  doc["clientId"] = client_id;
-  doc["topic"] = topic_pub;
-  doc["ok"] = ok;
-  JsonObject data = doc.createNestedObject("data"); //添加一个对象节点
-  data["duration"] = duration;
-  data["remark"] = remark;
-  serializeJson(doc ,output);
-
-  serializeJsonPretty(doc, Serial);
-
-  client.publish(topic_pub, output.c_str());
-  // Serial.print(ok ? "成功" : "异常");
-  // Serial.print("结束！");
-  // Serial.print("本次正确坐姿维持时间：");
-  // Serial.print(duration);
-  // Serial.print("，详情信息：");
-  // Serial.print(remark);
 }
 
 float get_distance() {
@@ -136,6 +153,7 @@ void normal_handle() {
       Serial.print("开始专注！");
       flag = true;
       keep = millis();
+      pub_status("start");
     }
   }
 }
@@ -160,7 +178,7 @@ void near_handle() {
     }
     if (millis() - now >= ADJUST_DURATION) {
       flag = false;
-      send_keep_record(millis() - keep, false, "远于正常距离");
+      pub_fail("远于正常距离");
     }
   }
 }
@@ -185,7 +203,7 @@ void far_handle() {
     }
     if (millis() - now >= ADJUST_DURATION) {
       flag = false;
-      send_keep_record(millis() - keep, false, "近于正常距离");
+      pub_fail("近于正常距离");
     }
   }
 }
@@ -205,7 +223,7 @@ void exception_handle() {
     }
     if (millis() - now >= EXCEPTION_DURATION) {
       Serial.println("数据异常");
-      send_keep_record(millis() - keep, false, "数据异常");
+      pub_fail("数据异常");
       flag = false;
     }
   }
@@ -228,19 +246,20 @@ void loop() {
     reconnect();
   }
   client.loop();
+  if (start) {
+    cm = get_distance();
 
-  cm = get_distance();
-
-  if (cm < 30) {
-    if (cm >= 7 && cm <= 13) {
-      normal_handle();
-    } else if (cm > 13) {
-      near_handle();
+    if (cm < 30) {
+      if (cm >= 7 && cm <= 13) {
+        normal_handle();
+      } else if (cm > 13) {
+        near_handle();
+      } else {
+        far_handle();
+      }
     } else {
-      far_handle();
+      exception_handle();
     }
-  } else {
-    exception_handle();
   }
 
   delay(250);
