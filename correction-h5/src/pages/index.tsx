@@ -40,7 +40,7 @@ const IndexPage = (props: any) => {
     topic: 'correction/esp8266',
     qos: 0,
   };
-  const pubConnContext = {
+  const pubSimpleContext = {
     topic: 'correction/h5',
     qos: 0,
   };
@@ -56,6 +56,7 @@ const IndexPage = (props: any) => {
     isConnect: false,
     btnText: '连接',
   });
+  const [remark, setRemark] = useState<string | undefined>(undefined); // 用于判断正常或者异常停止专注
   // countdown
   const formatTime = (time: number) => {
     const m = Math.floor(time / 1000 / 60);
@@ -78,6 +79,12 @@ const IndexPage = (props: any) => {
     text: formatTime(now),
   });
   const [start, setStart] = useState(false);
+  // 开始前准备状态
+  const [preStart, setPreStart] = useState({
+    start: false,
+    text: '',
+    textColor: '#3498db',
+  });
   const [pause, setPause] = useState(false);
   const [edit, setEdit] = useState(false);
   const [inputMin, setInputMin] = useState(progressInfo.text.min);
@@ -168,14 +175,14 @@ const IndexPage = (props: any) => {
   const pubConnectDevice = () => {
     setSubLock(true);
     clearTimeout(timeout);
-    mqttPublish({ ...pubConnContext, payload: 'connect' });
+    mqttPublish({ ...pubSimpleContext, payload: 'connect' });
     setConnectStatus({
       color: '#f39c12', // 黄色
       text: '连接设备中',
       isConnect: false,
       btnText: '连接...',
     });
-    // 4 秒后判断是否连接成功
+    // 4 秒后判断是否连接成功，会保存上下文，所以没办法使用是否连接来作为判断依据
     timeout = setTimeout(() => {
       setConnectStatus({
         color: '#e74c3c', // 红色
@@ -185,6 +192,27 @@ const IndexPage = (props: any) => {
       });
     }, 4000);
     setSubLock(false);
+  };
+
+  const pubRecord = (time: number, remark?: string) => {
+    console.log('pubRecord remark:', remark);
+    // console.log({
+    //   ...pubRecordContext,
+    //   payload: JSON.stringify({
+    //     duration: time,
+    //     success: remark ? 0 : 1,
+    //     remark: remark,
+    //   }),
+    // });
+    mqttPublish({
+      ...pubRecordContext,
+      payload: JSON.stringify({
+        duration: time,
+        success: remark ? 0 : 1,
+        remark: remark,
+      }),
+    });
+    console.log('success pub record');
   };
 
   const handleSub = () => {
@@ -232,6 +260,23 @@ const IndexPage = (props: any) => {
   // countdown functions
   // 重置计时器所需的所有参数
   const resetParam = () => {
+    mqttPublish({ ...pubSimpleContext, payload: 'stop' });
+    // 重置开始前准备状态
+    setPreStart({
+      start: true,
+      text: now <= 0 ? 'Stop!' : 'Fail and stop!',
+      textColor: '#e74c3c',
+    });
+    setTimeout(() => {
+      console.log('success stop');
+      setPreStart({
+        start: false,
+        text: '',
+        textColor: '#3498db',
+      });
+    }, 1500);
+    // 发送时间给 emq cloud，通过规则引擎记录本次专注情况
+    pubRecord(total - now, remark || (now > 0 ? '中途停止' : undefined));
     now = total;
     cnt = 0;
     isClose = false;
@@ -325,10 +370,30 @@ const IndexPage = (props: any) => {
         if (topic === 'correction/esp8266') {
           switch (msgObj.status) {
             case 'start':
-              console.log('start');
+              clearTimeout(timeout); // 清除延时函数
+              setPreStart({
+                start: true,
+                text: 'Begin!',
+                textColor: '#3498db',
+              });
+              // 1.5 秒后正式开始
+              setTimeout(() => {
+                console.log('success start');
+                // 正式开始
+                setStart(true);
+                setPreStart({
+                  start: true,
+                  text: '',
+                  textColor: '#3498db',
+                });
+              }, 1500);
+              console.log('mqtt msg from esp8266: start');
               break;
             case 'fail':
-              console.log('fail');
+              setRemark(msgObj.remark);
+              // 直接停止
+              setStart(false);
+              console.log('mqtt msg from esp8266: fail');
               break;
             case 'connected':
               clearTimeout(timeout);
@@ -352,6 +417,7 @@ const IndexPage = (props: any) => {
   // 暂停，重新设置计时器
   useEffect(() => {
     if (pause) {
+      mqttPublish({ ...pubSimpleContext, payload: 'stop' });
       clearInterval(interval);
       isClose = true;
       console.log('interval', interval);
@@ -359,6 +425,7 @@ const IndexPage = (props: any) => {
     } else {
       // 如果是结束后的重置暂停，不需要设置定时器，重置参数 isClose 即可
       if (isClose) {
+        mqttPublish({ ...pubSimpleContext, payload: 'start' });
         interval = setInterval(() => {
           handleCountdown();
         }, 10);
@@ -374,6 +441,8 @@ const IndexPage = (props: any) => {
     // 放在外面每次刷新页面后都为 null
     // let interval: NodeJS.Timer;
     if (start) {
+      // 错误专注原因 remark 清空
+      setRemark(undefined);
       interval = setInterval(() => {
         handleCountdown();
       }, 10);
@@ -384,7 +453,7 @@ const IndexPage = (props: any) => {
       if (interval) clearInterval(interval); // 如果中途停止，则关闭计时器
       // 重置
       setTimeout(() => {
-        resetParam();
+        if (preStart.start) resetParam();
       }, 50);
       console.log('interval', interval);
       console.log('stop success');
@@ -401,7 +470,7 @@ const IndexPage = (props: any) => {
           title={'健康专注'}
           rightIcon={faChartLine}
           onClickRight={() => {
-            if (start) {
+            if (preStart.start) {
               console.log("can't push stat page because of focusing");
             } else {
               // 解决重复连接问题
@@ -420,7 +489,11 @@ const IndexPage = (props: any) => {
           ></div>
           <span className={styles.statusText}>{connectStatus.text}</span>
         </div>
-        <button className={styles.mqttBtn} onClick={handleSub} disabled={start}>
+        <button
+          className={styles.mqttBtn}
+          onClick={handleSub}
+          disabled={preStart.start}
+        >
           {connectStatus.btnText}
         </button>
       </div>
@@ -454,33 +527,43 @@ const IndexPage = (props: any) => {
         </ArcProgress>
       </div>
       {/* 倒计时控制按钮 */}
-      {/* TODO 未订阅时无法点击 */}
       <div className={styles.controlContainer}>
-        {start ? (
-          // 专注按钮组
-          <>
-            {pause ? (
-              // 取消暂停按钮
+        {preStart.start ? (
+          // 是否正式开始计时
+          start ? (
+            // 正式开始，专注按钮组
+            <>
+              {pause ? (
+                // 取消暂停按钮
+                <IconRoundButton
+                  icon={faPlay}
+                  color={'#2ecc71'}
+                  onClick={() => setPause(!pause)}
+                />
+              ) : (
+                // 暂停按钮
+                <IconRoundButton
+                  icon={faPause}
+                  color={'#3498db'}
+                  onClick={() => setPause(!pause)}
+                />
+              )}
+              {/* 停止按钮 */}
               <IconRoundButton
-                icon={faPlay}
-                color={'#2ecc71'}
-                onClick={() => setPause(!pause)}
+                icon={faStop}
+                color={'#e74c3c'}
+                onClick={() => setStart(!start)}
               />
-            ) : (
-              // 暂停按钮
-              <IconRoundButton
-                icon={faPause}
-                color={'#3498db'}
-                onClick={() => setPause(!pause)}
-              />
-            )}
-            {/* 停止按钮 */}
-            <IconRoundButton
-              icon={faStop}
-              color={'#e74c3c'}
-              onClick={() => setStart(!start)}
-            />
-          </>
+            </>
+          ) : (
+            // 开始前文字提示
+            <div
+              className={styles.preStartText}
+              style={{ color: preStart.textColor }}
+            >
+              {preStart.text}
+            </div>
+          )
         ) : edit ? (
           // 编辑按钮组
           <>
@@ -502,12 +585,34 @@ const IndexPage = (props: any) => {
         ) : (
           // 第一状态按钮组
           <>
-            {/* 开始专注按钮 */}
+            {/* 开始专注前操作按钮 */}
             <IconRoundButton
               icon={faPlay}
               color={'#2ecc71'}
               disabled={!connectStatus.isConnect}
-              onClick={() => setStart(!start)}
+              onClick={() => {
+                mqttPublish({ ...pubSimpleContext, payload: 'start' });
+                setPreStart({
+                  start: true,
+                  text: 'Waiting...',
+                  textColor: '#3498db',
+                });
+                timeout = setTimeout(() => {
+                  setPreStart({
+                    start: true,
+                    text: 'Wrong!',
+                    textColor: '#e74c3c',
+                  });
+                  setTimeout(() => {
+                    console.log('wrong start');
+                    setPreStart({
+                      start: false,
+                      text: '',
+                      textColor: '#3498db',
+                    });
+                  }, 1500);
+                }, 3000);
+              }}
             />
             {/* 进入编辑按钮 */}
             <IconRoundButton
