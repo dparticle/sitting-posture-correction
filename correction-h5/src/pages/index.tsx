@@ -23,6 +23,8 @@ let isClose = false;
 let total = parseInt(localStorage.getItem('min') || '5') * 60 * 1000;
 let now = total;
 let cnt = 0; // 累计到 1000 时再更新 now
+// 连接设备延时器
+let timeout: NodeJS.Timeout;
 
 const IndexPage = (props: any) => {
   // mqtt
@@ -35,7 +37,15 @@ const IndexPage = (props: any) => {
     password: '***',
   };
   const subscription = {
-    topic: 'correction/#',
+    topic: 'correction/esp8266',
+    qos: 0,
+  };
+  const pubConnContext = {
+    topic: 'correction/h5',
+    qos: 0,
+  };
+  const pubRecordContext = {
+    topic: 'correction/record',
     qos: 0,
   };
   const [client, setClient] = useState<MqttClient | null>(null);
@@ -43,7 +53,8 @@ const IndexPage = (props: any) => {
   const [connectStatus, setConnectStatus] = useState({
     color: '#bdc3c7', // 灰色
     text: '未连接服务器',
-    isSub: false,
+    isConnect: false,
+    btnText: '连接',
   });
   // countdown
   const formatTime = (time: number) => {
@@ -88,18 +99,21 @@ const IndexPage = (props: any) => {
           setConnectStatus({
             color: '#e74c3c',
             text: '订阅失败', // 红色
-            isSub: false,
+            isConnect: false,
+            btnText: '订阅',
           });
           setSubLock(false);
           return;
         }
         // 订阅成功
         console.log('success subscribe');
-        setConnectStatus({
-          color: '#2ecc71', // 绿色
-          text: '已订阅',
-          isSub: true,
-        });
+        // setConnectStatus({
+        //   color: '#f39c12', // 黄色
+        //   text: '已订阅',
+        //   isConnect: false,
+        //   btnText: '取消订阅',
+        // });
+        pubConnectDevice(); // 自动连接设备
         setSubLock(false);
       });
     }
@@ -114,7 +128,8 @@ const IndexPage = (props: any) => {
           setConnectStatus({
             color: '#e74c3c',
             text: '取消订阅失败', // 红色
-            isSub: true,
+            isConnect: false,
+            btnText: '取消订阅',
           });
           setSubLock(false);
           return;
@@ -124,7 +139,8 @@ const IndexPage = (props: any) => {
         setConnectStatus({
           color: '#f39c12', // 黄色
           text: '未订阅',
-          isSub: false,
+          isConnect: false,
+          btnText: '订阅',
         });
         setSubLock(false);
       });
@@ -149,18 +165,66 @@ const IndexPage = (props: any) => {
     }
   };
 
+  const pubConnectDevice = () => {
+    setSubLock(true);
+    clearTimeout(timeout);
+    mqttPublish({ ...pubConnContext, payload: 'connect' });
+    setConnectStatus({
+      color: '#f39c12', // 黄色
+      text: '连接设备中',
+      isConnect: false,
+      btnText: '连接...',
+    });
+    // 4 秒后判断是否连接成功
+    timeout = setTimeout(() => {
+      setConnectStatus({
+        color: '#e74c3c', // 红色
+        text: '连接设备失败',
+        isConnect: false,
+        btnText: '重连',
+      });
+    }, 4000);
+    setSubLock(false);
+  };
+
   const handleSub = () => {
     if (!subLock) {
       setSubLock(true); // 防止再次点击订阅
-      if (connectStatus.isSub) {
-        mqttUnSub(subscription);
-      } else {
-        if (client) {
-          // 订阅 correction/# 主题
-          mqttSub(subscription);
-        } else {
+      // console.log('btnText', connectStatus.btnText);
+
+      switch (connectStatus.btnText) {
+        case '连接':
           mqttConnect(url, options);
-        }
+          break;
+        case '断开连接':
+          console.log('success disconnect device');
+          // 断开连接直接取消订阅
+          mqttUnSub(subscription);
+          setSubLock(false);
+          // 不存在断开服务器
+          // if (connectStatus.isConnect) {
+          //   setConnectStatus({
+          //     color: '#f39c12', // 黄色
+          //     text: '未连接设备',
+          //     isConnect: false,
+          //     btnText: '重连',
+          //   });
+          // } else {
+          //   mqttDisconnect();
+          // }
+          break;
+        case '重连':
+          pubConnectDevice();
+          break;
+        case '订阅':
+          mqttSub(subscription);
+          break;
+        case '取消订阅':
+          mqttUnSub(subscription);
+          break;
+        default:
+          console.log('unknown btn onClick event');
+          break;
       }
     }
   };
@@ -197,10 +261,15 @@ const IndexPage = (props: any) => {
 
   // 更改专注总时间
   const editTotal = () => {
-    total = parseInt(inputMin) * 60 * 1000;
-    now = total;
-    localStorage.setItem('min', inputMin);
-    setProgressInfo({ process: (now - cnt) / total, text: formatTime(now) });
+    // fix empty input
+    if (
+      !(typeof inputMin === 'undefined' || inputMin === null || inputMin === '')
+    ) {
+      total = parseInt(inputMin) * 60 * 1000;
+      now = total;
+      localStorage.setItem('min', inputMin);
+      setProgressInfo({ process: (now - cnt) / total, text: formatTime(now) });
+    }
     setEdit(!edit);
   };
 
@@ -225,7 +294,8 @@ const IndexPage = (props: any) => {
         setConnectStatus({
           color: '#f39c12', // 黄色
           text: '已连接服务器',
-          isSub: false,
+          isConnect: false,
+          btnText: '订阅',
         });
         mqttSub(subscription); // 自动订阅
         setSubLock(false);
@@ -237,7 +307,8 @@ const IndexPage = (props: any) => {
         setConnectStatus({
           color: '#e74c3c', // 红色
           text: '连接错误',
-          isSub: false,
+          isConnect: false,
+          btnText: '连接',
         });
         setSubLock(false);
       });
@@ -245,9 +316,34 @@ const IndexPage = (props: any) => {
         setSubLock(true);
         console.log('Reconnecting');
       });
-      client.on('message', (topic, message) => {
+      client.on('message', (topic, message: any) => {
         const payload = { topic, message: message.toString() };
         console.log('payload', payload);
+        const msgObj = JSON.parse(message);
+        // console.log('msgObj', msgObj);
+        // 收到消息逻辑规则
+        if (topic === 'correction/esp8266') {
+          switch (msgObj.status) {
+            case 'start':
+              console.log('start');
+              break;
+            case 'fail':
+              console.log('fail');
+              break;
+            case 'connected':
+              clearTimeout(timeout);
+              setConnectStatus({
+                color: '#2ecc71', // 绿色
+                text: '已连接设备',
+                isConnect: true,
+                btnText: '断开连接',
+              });
+              console.log('success connect device');
+              break;
+            default:
+              console.log('unknown esp8266 status');
+          }
+        }
       });
     }
   }, [client]);
@@ -325,7 +421,7 @@ const IndexPage = (props: any) => {
           <span className={styles.statusText}>{connectStatus.text}</span>
         </div>
         <button className={styles.mqttBtn} onClick={handleSub} disabled={start}>
-          {client ? (connectStatus.isSub ? '取消订阅' : '订阅') : '连接'}
+          {connectStatus.btnText}
         </button>
       </div>
       {/* 倒计时环形进度条 */}
@@ -410,7 +506,7 @@ const IndexPage = (props: any) => {
             <IconRoundButton
               icon={faPlay}
               color={'#2ecc71'}
-              disabled={!connectStatus.isSub}
+              disabled={!connectStatus.isConnect}
               onClick={() => setStart(!start)}
             />
             {/* 进入编辑按钮 */}
