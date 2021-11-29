@@ -42,31 +42,36 @@ func (s *StatService) GetSevenTime() (interface{}, error) {
 	)
 	items := make([]*response.SevenTimeStat, 0)
 	rows, err := global.SPC_DB.Raw("SELECT DATE_FORMAT(create_time,'%m-%d') days, SUM(duration) total_duration " +
-		" FROM ( SELECT * FROM record WHERE DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= date(create_time)) seven " +
+		" FROM ( SELECT * FROM record WHERE DATE_SUB(CURDATE(), INTERVAL 7 DAY) < date(create_time)) seven " +
 		" GROUP BY days;").Rows()
 	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
 	offset := -6
+	appendHandle := func(date string, min uint) {
+		items = append(items, &response.SevenTimeStat{
+			Date: date,
+			Min: min,
+		})
+	}
 	for rows.Next() {
 		rows.Scan(&days, &totalDuration)
 		for offset <= 0 {
 			d := utils.GetDateWithMonthAndDay(offset)
 			offset++
 			if days == d {
-				items = append(items, &response.SevenTimeStat{
-					Date: days,
-					Min: utils.ToMin(totalDuration),
-				})
+				appendHandle(days, utils.ToMin(totalDuration))
 				break
 			} else {
-				items = append(items, &response.SevenTimeStat{
-					Date: d,
-					Min: 0,
-				})
+				appendHandle(d, 0)
 			}
 		}
+	}
+	for offset <= 0 {
+		d := utils.GetDateWithMonthAndDay(offset)
+		offset++
+		appendHandle(d, 0)
 	}
 	return items, nil
 }
@@ -79,43 +84,40 @@ func (s *StatService) GetSevenNum() (interface{}, error) {
 	)
 	items := make([]*response.SevenNumStat, 0)
 	rows, err := global.SPC_DB.Raw("SELECT DATE_FORMAT(create_time,'%m-%d') days, COUNT(CASE WHEN success = 1 THEN 1 END) ok_num, COUNT(CASE WHEN success = 0 THEN 1 END) fail_num " +
-		" FROM (SELECT * FROM record WHERE DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= date(create_time)) seven " +
+		" FROM (SELECT * FROM record WHERE DATE_SUB(CURDATE(), INTERVAL 7 DAY) < date(create_time)) seven " +
 		" GROUP BY days;").Rows()
 	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
 	offset := -6
+	appendHandle := func(date string, okNum uint, t string) {
+		items = append(items, &response.SevenNumStat{
+			Date: date,
+			Num:  okNum,
+			Type: t,
+		})
+	}
 	for rows.Next() {
 		rows.Scan(&days, &okNum, &failNum)
 		for offset <= 0 {
 			d := utils.GetDateWithMonthAndDay(offset)
 			offset++
 			if days == d {
-				items = append(items, &response.SevenNumStat{
-					Date: days,
-					Num:  okNum,
-					Type: "成功",
-				})
-				items = append(items, &response.SevenNumStat{
-					Date: days,
-					Num:  failNum,
-					Type: "失败",
-				})
+				appendHandle(days, okNum, "成功")
+				appendHandle(days, failNum, "失败")
 				break
 			} else {
-				items = append(items, &response.SevenNumStat{
-					Date: d,
-					Num:  0,
-					Type: "成功",
-				})
-				items = append(items, &response.SevenNumStat{
-					Date: d,
-					Num:  0,
-					Type: "失败",
-				})
+				appendHandle(d, 0, "成功")
+				appendHandle(d, 0, "失败")
 			}
 		}
+	}
+	for offset <= 0 {
+		d := utils.GetDateWithMonthAndDay(offset)
+		offset++
+		appendHandle(d, 0, "成功")
+		appendHandle(d, 0, "失败")
 	}
 	return items, nil
 }

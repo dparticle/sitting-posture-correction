@@ -1,6 +1,6 @@
 system:
   env: 'dev'  # Change to "develop" to skip authentication for development mode
-  addr: 8888
+  addr: 1128
 
 mysql:
   path: '***'

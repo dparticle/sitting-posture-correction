@@ -9,7 +9,7 @@ type StatRouter struct {
 }
 
 func (s StatRouter) InitStatRouter(Router *gin.RouterGroup) {
-	customerRouter := Router.Group("/stat")
+	customerRouter := Router.Group("/v1/stat")
 	var statApi = v1.ApiGroupApp.StatApi
 	{
 		customerRouter.POST("get_today", statApi.GetToday)

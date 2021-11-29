@@ -10,7 +10,6 @@ import StatGridItem from '@/components/StatGridItem';
 import request from 'umi-request';
 
 const StatPage = (props: any) => {
-  const url = 'http://127.0.0.1:8888';
   const [dataToday, setDataToday] = useState<
     { time: number; okNum: number; failNum: number } | undefined
   >(undefined);
@@ -119,9 +118,9 @@ const StatPage = (props: any) => {
     chart.render();
   };
 
-  useEffect(() => {
+  const sync = () => {
     request
-      .post(url + '/stat/get_today')
+      .post('/v1/stat/get_today')
       .then((res: any) => {
         // console.log('dataToday', res);
         setDataToday(res);
@@ -130,7 +129,7 @@ const StatPage = (props: any) => {
         console.error('get dataToday error', err);
       });
     request
-      .post(url + '/stat/get_total')
+      .post('/v1/stat/get_total')
       .then((res: any) => {
         // console.log('dataTotal', res);
         setDataTotal(res);
@@ -139,7 +138,7 @@ const StatPage = (props: any) => {
         console.error('get dataTotal error', err);
       });
     request
-      .post(url + '/stat/get_seven_time')
+      .post('/v1/stat/get_seven_time')
       .then((res: any) => {
         // console.log('dataMin', res);
         setDataMin(res);
@@ -148,7 +147,7 @@ const StatPage = (props: any) => {
         console.error('get dataMin error', err);
       });
     request
-      .post(url + '/stat/get_seven_num')
+      .post('/v1/stat/get_seven_num')
       .then((res: any) => {
         // console.log('dataNum', res);
         setDataNum(res);
@@ -156,6 +155,13 @@ const StatPage = (props: any) => {
       .catch((err: any) => {
         console.error('get dataNum error', err);
       });
+  };
+
+  useEffect(() => {
+    sync();
+    return () => {
+      console.log('componentWillUnMount');
+    };
   }, []);
 
   return (
@@ -165,7 +171,7 @@ const StatPage = (props: any) => {
         leftIcon={faChevronLeft}
         onClickLeft={() => history.goBack()}
         rightIcon={faSync}
-        onClickRight={() => console.log('resync')}
+        onClickRight={() => sync()}
       />
       <div className={styles.statGrid}>
         {dataToday && (

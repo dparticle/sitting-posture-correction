@@ -208,6 +208,8 @@ const IndexPage = (props: any) => {
   useEffect(() => {
     setSubLock(true);
     mqttConnect(url, options);
+    // 所有的 useEffect 会在 componentWillUnMount 再运行一次，不能在卸载组件后再 setState，会内存泄漏，因此不推荐使用返回函数方法
+    return () => {};
   }, []);
 
   // mqtt useEffect
@@ -258,8 +260,7 @@ const IndexPage = (props: any) => {
       isClose = true;
       console.log('interval', interval);
       console.log('pause success');
-    }
-    return () => {
+    } else {
       // 如果是结束后的重置暂停，不需要设置定时器，重置参数 isClose 即可
       if (isClose) {
         interval = setInterval(() => {
@@ -269,7 +270,8 @@ const IndexPage = (props: any) => {
         console.log('interval', interval);
         console.log('cancel pause success');
       }
-    };
+    }
+    return () => {};
   }, [pause]);
 
   useEffect(() => {
@@ -282,9 +284,7 @@ const IndexPage = (props: any) => {
       isClose = false;
       console.log('interval', interval);
       console.log('start success');
-    }
-    // 在下一次 effect 函数被调用时或每次组件被注销时或者就会调用，闭包
-    return () => {
+    } else {
       if (interval) clearInterval(interval); // 如果中途停止，则关闭计时器
       // 重置
       setTimeout(() => {
@@ -292,7 +292,9 @@ const IndexPage = (props: any) => {
       }, 50);
       console.log('interval', interval);
       console.log('stop success');
-    };
+    }
+    // 在下一次 effect 函数被调用时或每次组件被注销时或者就会调用，闭包，不推荐！！！
+    return () => {};
   }, [start]);
 
   return (
