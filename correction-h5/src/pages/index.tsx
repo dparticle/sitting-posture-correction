@@ -196,8 +196,8 @@ const IndexPage = (props: any) => {
 
   const pubRecord = (time: number, remark?: string) => {
     console.log('pubRecord remark:', remark);
-    // 小于 10 秒不记录
-    const min = 10 * 1000;
+    // 小于 15 秒不记录
+    const min = 15 * 1000;
     if (time > min) {
       mqttPublish({
         ...pubRecordContext,
@@ -415,7 +415,7 @@ const IndexPage = (props: any) => {
   // 暂停，重新设置计时器
   useEffect(() => {
     if (pause) {
-      mqttPublish({ ...pubSimpleContext, payload: 'stop' });
+      mqttPublish({ ...pubSimpleContext, payload: 'pause' });
       clearInterval(interval);
       isClose = true;
       console.log('interval', interval);
@@ -423,7 +423,7 @@ const IndexPage = (props: any) => {
     } else {
       // 如果是结束后的重置暂停，不需要设置定时器，重置参数 isClose 即可
       if (isClose) {
-        mqttPublish({ ...pubSimpleContext, payload: 'pause' });
+        mqttPublish({ ...pubSimpleContext, payload: 'recover' });
         interval = setInterval(() => {
           handleCountdown();
         }, 10);
@@ -610,7 +610,7 @@ const IndexPage = (props: any) => {
                       textColor: '#3498db',
                     });
                   }, 1500);
-                }, 3000);
+                }, 10000);
               }}
             />
             {/* 进入编辑按钮 */}
